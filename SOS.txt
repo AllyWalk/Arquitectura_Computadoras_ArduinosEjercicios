@@ -1,0 +1,41 @@
+SOS
+const int ledExterno = 9;  // LED para el SOS
+
+void setup() {
+  pinMode(ledExterno, OUTPUT);
+}
+
+void loop() {
+  enviarSOS();   // Envía SOS
+  delay(2000);   // Espera 2 segundos y repite
+}
+
+void enviarSOS() {
+  // S = ··· (3 puntos)
+  for (int i = 0; i < 3; i++) {
+    analogWrite(ledExterno, 255);
+    delay(200);
+    analogWrite(ledExterno, 0);
+    delay(200);
+  }
+
+  delay(300); // Pausa entre letras
+
+  // O = --- (3 guiones)
+  for (int i = 0; i < 3; i++) {
+    analogWrite(ledExterno, 255);
+    delay(600);
+    analogWrite(ledExterno, 0);
+    delay(200);
+  }
+
+  delay(300); // Pausa entre letras
+
+  // S = ··· (3 puntos)
+  for (int i = 0; i < 3; i++) {
+    analogWrite(ledExterno, 255);
+    delay(200);
+    analogWrite(ledExterno, 0);
+    delay(200);
+  }
+}

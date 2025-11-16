@@ -1,0 +1,123 @@
+IRQ Enmascarado
+// ====== CONFIGURACIÓN DE PINES ======
+// LEDs
+const int led1 = A1; // SOS
+const int led2 = A2; // Brillo
+const int led3 = 6;  // Parpadeo
+
+// Botones
+const int button1 = 11;
+const int button2 = 10;
+const int button3 = 8;
+const int buttonStop = 2;
+
+// ====== VARIABLES ======
+bool activeSOS = false;
+bool activeFade = false;
+bool activeBlink = false;
+volatile bool stopFlag = false;
+
+unsigned long prevMillisSOS = 0;
+unsigned long prevMillisFade = 0;
+unsigned long prevMillisBlink = 0;
+
+int stepSOS = 0;
+int brillo = 0;
+int dir = 1;
+bool blinkState = LOW;
+
+const int sosPattern[] = {200, 200, 200, 600, 600, 600, 200, 200, 200}; // ...---...
+const int sosTotal = 9;
+
+// ====== SETUP ======
+void setup() {
+  pinMode(led1, OUTPUT);
+  pinMode(led2, OUTPUT);
+  pinMode(led3, OUTPUT);
+
+  pinMode(button1, INPUT_PULLUP);
+  pinMode(button2, INPUT_PULLUP);
+  pinMode(button3, INPUT_PULLUP);
+  pinMode(buttonStop, INPUT_PULLUP);
+
+  attachInterrupt(digitalPinToInterrupt(buttonStop), stopISR, FALLING);
+}
+
+// ====== LOOP PRINCIPAL ======
+void loop() {
+  // --- CONTROL DE BOTONES ---
+  if (digitalRead(button1) == LOW) {
+    delay(200);
+    if (!activeSOS) { activeSOS = true; activeFade = false; activeBlink = false; }
+    else activeSOS = false; // pausa/reanuda
+    resetLeds();
+  }
+
+  if (digitalRead(button2) == LOW) {
+    delay(200);
+    if (!activeFade) { activeFade = true; activeSOS = false; activeBlink = false; }
+    else activeFade = false;
+    resetLeds();
+  }
+
+  if (digitalRead(button3) == LOW) {
+    delay(200);
+    if (!activeBlink) { activeBlink = true; activeSOS = false; activeFade = false; }
+    else activeBlink = false;
+    resetLeds();
+  }
+
+  if (stopFlag) { stopAll(); return; }
+
+  // --- EJECUCIÓN DE MODOS ---
+  if (activeSOS && !stopFlag) runSOS();
+  if (activeFade && !stopFlag) runFade();
+  if (activeBlink && !stopFlag) runBlink();
+}
+
+// ====== FUNCIONES ======
+void stopISR() { stopFlag = true; }
+
+void resetLeds() {
+  digitalWrite(led1, LOW);
+  digitalWrite(led2, LOW);
+  digitalWrite(led3, LOW);
+}
+
+void stopAll() {
+  activeSOS = activeFade = activeBlink = false;
+  stopFlag = false;
+  resetLeds();
+}
+
+// ---------- MODO SOS ----------
+void runSOS() {
+  if (millis() - prevMillisSOS >= sosPattern[stepSOS]) {
+    prevMillisSOS = millis();
+    digitalWrite(led1, !digitalRead(led1));
+    stepSOS++;
+    if (stepSOS >= sosTotal * 2) { // se reinicia
+      stepSOS = 0;
+      digitalWrite(led1, LOW);
+    }
+  }
+}
+
+// ---------- MODO FADE ----------
+void runFade() {
+  if (millis() - prevMillisFade >= 10) {
+    prevMillisFade = millis();
+    analogWrite(led2, brillo);
+    brillo += dir * 5;
+    if (brillo >= 255 || brillo <= 0) dir = -dir;
+  }
+}
+
+// ---------- MODO BLINK ----------
+void runBlink() {
+  if (millis() - prevMillisBlink >= 300) {
+    prevMillisBlink = millis();
+    blinkState = !blinkState;
+    digitalWrite(led3, blinkState);
+  }
+}

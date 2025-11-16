@@ -1,0 +1,72 @@
+Secuencias 
+const int ledExterno = 9;  // Pin PWM para LED externo
+
+void setup() {
+  pinMode(ledExterno, OUTPUT);
+}
+
+void loop() {
+  // Primer SOS
+  enviarSOS();
+  
+  delay(1000);
+  
+  // 7 parpadeos rápidos
+  for(int i = 0; i < 7; i++) {
+    analogWrite(ledExterno, 255);
+    delay(150);
+    analogWrite(ledExterno, 0);
+    delay(150);
+  }
+  
+  delay(1000);
+  
+  // Segundo SOS
+  enviarSOS();
+  
+  delay(1000);
+  
+  // EFECTO DE PULSO (fade in de 0 a 255)
+  for(int brillo = 0; brillo <= 255; brillo++) {
+    analogWrite(ledExterno, brillo);
+    delay(10);  // Ajusta este valor para más rápido/lento
+  }
+  
+  // Mantener en máximo brillo por 1 segundo
+  analogWrite(ledExterno, 255);
+  delay(1000);
+  
+  // Apagar completamente
+  analogWrite(ledExterno, 0);
+  delay(3000);
+}
+
+void enviarSOS() {
+  // S = ···
+  for(int i = 0; i < 3; i++) {
+    analogWrite(ledExterno, 255);
+    delay(200);
+    analogWrite(ledExterno, 0);
+    delay(200);
+  }
+  
+  delay(300);
+  
+  // O = ---
+  for(int i = 0; i < 3; i++) {
+    analogWrite(ledExterno, 255);
+    delay(600);
+    analogWrite(ledExterno, 0);
+    delay(200);
+  }
+  
+  delay(300);
+  
+  // S = ···
+  for(int i = 0; i < 3; i++) {
+    analogWrite(ledExterno, 255);
+    delay(200);
+    analogWrite(ledExterno, 0);
+    delay(200);
+  }
+}
