@@ -1,1 +1,118 @@
+#include <Keypad.h>
 
+// --- Configuración de Hardware ---
+
+// Definición del tamaño de la memoria (6 espacios, correspondientes a los botones 1 al 6)
+#define TAMANO_MEMORIA 6 
+
+// Pines de control de LEDs
+const int LED_FALLO = 2;   // LED que se enciende al fallar
+const int LED_ACIERTO = 3; // LED que se enciende al acertar
+
+// --- Configuración del Keypad ---
+
+// Define el número de filas y columnas de tu Keypad
+const byte ROWS = 4; // Cambia a 3 si usas un 4x3
+const byte COLS = 4; // Cambia a 3 si usas un 4x3
+
+// Define la distribución de teclas de tu Keypad
+char keys[ROWS][COLS] = {
+  {'1', '2', '3', 'A'},
+  {'4', '5', '6', 'B'},
+  {'7', '8', '9', 'C'},
+  {'*', '0', '#', 'D'}
+};
+
+// Pines del Arduino a los que están conectadas las filas y columnas del Keypad
+byte rowPins[ROWS] = {A0, A1, A2, A3}; // Pines para las filas (A0, A1, A2, A3 o Digitales)
+byte colPins[COLS] = {8, 9, 10, 11};   // Pines para las columnas (Digitales)
+
+// Crea el objeto Keypad
+Keypad customKeypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
+
+// --- Variables del Juego ---
+int memoria[TAMANO_MEMORIA]; // La memoria lineal (array)
+int posicion_secreta;        // El índice donde se almacena el '1'
+
+void setup() {
+    // Inicializa los pines de los LEDs como salida
+    pinMode(LED_FALLO, OUTPUT);
+    pinMode(LED_ACIERTO, OUTPUT);
+    
+    // Apagar LEDs al inicio
+    digitalWrite(LED_FALLO, LOW);
+    digitalWrite(LED_ACIERTO, LOW);
+    
+    // Inicializa la comunicación serial para depuración (opcional, pero útil)
+    Serial.begin(9600);
+    randomSeed(analogRead(A7)); // Semilla aleatoria usando un pin analógico
+    
+    Serial.println("--- Batalla Naval en Memoria (Keypad) ---");
+    Serial.println("Presiona un número del 1 al 6 para adivinar.");
+    
+    iniciarJuego(); // Llama a la función para configurar el primer juego
+}
+
+void loop() {
+    char key = customKeypad.getKey();
+
+    // Comprueba si se ha pulsado una tecla
+    if (key != NO_KEY) {
+        
+        // Verifica si la tecla pulsada está entre '1' y '6'
+        if (key >= '1' && key <= '6') {
+            
+            // Convierte el carácter pulsado ('1'...'6') a un número (1...6)
+            int intento = key - '0'; 
+            
+            // Convierte el número del usuario (1-6) al índice del array (0-5)
+            int indice_intento = intento - 1; 
+
+            Serial.print("Intento: ");
+            Serial.println(intento);
+            
+            // --- Comprobación del Intento ---
+            if (memoria[indice_intento] == 1) {
+                // ¡ACIERTO!
+                Serial.println("¡ACIERTO! Encontraste el '1'.");
+                digitalWrite(LED_ACIERTO, HIGH); // Enciende el LED verde
+                digitalWrite(LED_FALLO, LOW);
+                delay(2000); // Muestra el acierto por 2 segundos
+                iniciarJuego(); // Reinicia el juego
+            } else {
+                // FALLO
+                Serial.println("FALLO. Intenta de nuevo.");
+                digitalWrite(LED_FALLO, HIGH); // Enciende el LED rojo
+                digitalWrite(LED_ACIERTO, LOW);
+                delay(500); // Muestra el fallo brevemente
+                digitalWrite(LED_FALLO, LOW); // Apaga el LED rojo para el próximo intento
+            }
+        } else {
+            Serial.println("Tecla fuera de rango (Solo 1 a 6).");
+        }
+    }
+}
+
+// --- Función para iniciar o reiniciar el juego ---
+void iniciarJuego() {
+    
+    // 1. Limpiar la Memoria
+    for (int i = 0; i < TAMANO_MEMORIA; i++) {
+        memoria[i] = 0; // Poner todos los espacios en '0'
+    }
+
+    // 2. Generar nueva Posición Secreta
+    // 'random(TAMANO_MEMORIA)' genera un número entre 0 y 5
+    posicion_secreta = random(TAMANO_MEMORIA); 
+
+    // 3. Almacenar el '1'
+    memoria[posicion_secreta] = 1;
+    
+    // 4. Limpiar Feedback Visual
+    digitalWrite(LED_FALLO, LOW);
+    digitalWrite(LED_ACIERTO, LOW);
+    
+    Serial.println("\n------------------------------------");
+    Serial.println("🎯 Nuevo Mapa Generado. ¡Adivina!");
+    // Opcional para depuración: Serial.print("Posición Secreta (Índice): "); Serial.println(posicion_secreta);
+}
