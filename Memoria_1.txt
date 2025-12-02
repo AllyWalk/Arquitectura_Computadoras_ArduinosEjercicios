@@ -1,0 +1,163 @@
+// ===============================================
+// CONFIGURACIÓN DEL JUEGO DE LA BOMBA (6 BOTONES)
+// ===============================================
+#include <avr/wdt.h>
+
+// LEDs según tu conexión
+int leds[] = {2, 3, 4, 5, 6, 7};  // Recuerda cambiar D1 si te daba problemas
+int totalLeds = 6;
+
+// Botones según tu conexión
+// Los primeros 6 botones son para juego, el 7mo es para reinicio forzado
+int botones[] = {9, 10, 11, 12, A0, A1, A3};
+int botonReinicio = A2;  // Botón extra para reinicio
+
+// Variables del juego
+int posicionActual = 0;
+int posicionBomba = 0;
+int intentos = 3;
+
+// Evitar rebotes
+void esperarSoltar(int pin) {
+  while (digitalRead(pin) == LOW);
+  delay(150);
+}
+
+void Reset(){
+  wdt_enable(WDTO_15MS);
+}
+
+void setup() {
+  // Configurar el botón de reinicio extra
+  pinMode(botonReinicio, INPUT_PULLUP);
+  
+  // Configurar LEDs
+  for (int i = 0; i < totalLeds; i++) {
+    pinMode(leds[i], OUTPUT);
+  }
+
+  // Configurar botones del juego
+  for (int i = 0; i < totalLeds; i++) {
+    pinMode(botones[i], INPUT_PULLUP);
+  }
+
+  randomSeed(analogRead(0));
+  iniciarJuego();
+}
+
+void loop() {
+  // Verificar si se presionó el botón de reinicio extra
+  if (digitalRead(botonReinicio) == LOW) {
+    esperarSoltar(botonReinicio);
+    reiniciarJuego();
+    return;
+  }
+
+  // Verificar botones del juego
+  for (int i = 0; i < totalLeds; i++) {
+    if (digitalRead(botones[i]) == LOW) {
+      esperarSoltar(botones[i]);
+      posicionActual = i;
+      procesarIntento();
+      return;
+    }
+  }
+}
+
+// ===============================================
+//               FUNCIONES PRINCIPALES
+// ===============================================
+
+void iniciarJuego() {
+  apagarTodos();
+  intentos = 3;
+  posicionBomba = random(0, totalLeds);
+}
+
+void reiniciarJuego() {
+  // Animación de reinicio (parpadeo rápido)
+  for (int i = 0; i < 4; i++) {
+    encenderTodos();
+    delay(150);
+    apagarTodos();
+    delay(150);
+  }
+  iniciarJuego();
+}
+
+void procesarIntento() {
+  if (posicionActual == posicionBomba) {
+    winParpadeo();
+    iniciarJuego();
+    return;
+  }
+
+  // Falló
+  intentos--;
+  mostrarBombaError();
+
+  if (intentos > 0) {
+    // Mostrar que la bomba se mueve
+    encenderTodos();
+    delay(250);
+    apagarTodos();
+    delay(250);
+
+    do {
+      posicionBomba = random(0, totalLeds);
+    } while (posicionBomba == posicionActual);
+
+  } else {
+    loseParpadeo();
+    iniciarJuego();
+  }
+}
+
+// ===============================================
+//         PARPADEOS DE GANAR / PERDER
+// ===============================================
+
+void winParpadeo() {  // 3 parpadeos
+  for (int i = 0; i < 3; i++) {
+    encenderTodos();
+    delay(300);
+    apagarTodos();
+    delay(300);
+  }
+}
+
+void loseParpadeo() { // 1 parpadeo
+  encenderTodos();
+  delay(500);
+  apagarTodos();
+  delay(500);
+}
+
+// ===============================================
+//              FUNCIONES DE ANIMACIÓN
+// ===============================================
+
+void mostrarBombaError() {
+  for (int i = 0; i < 3; i++) {
+    digitalWrite(leds[posicionBomba], HIGH);
+    delay(300);
+    digitalWrite(leds[posicionBomba], LOW);
+    delay(300);
+  }
+}
+
+// ===============================================
+//                 FUNCIONES ÚTILES
+// ===============================================
+
+void encenderTodos() {
+  for (int i = 0; i < totalLeds; i++) {
+    digitalWrite(leds[i], HIGH);
+  }
+}
+
+void apagarTodos() {
+  for (int i = 0; i < totalLeds; i++) {
+    digitalWrite(leds[i], LOW);
+  }
+}
