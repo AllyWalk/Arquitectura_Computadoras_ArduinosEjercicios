@@ -1,0 +1,171 @@
+// ============================================================================
+//                GATO EN TERMINAL (Usuario vs CPU con 2 botones)
+// ============================================================================
+
+// ---- Pines ----
+const int BOTON_MOVER = 2;     // Avanza la selección (0-8)
+const int BOTON_SELEC = 4;     // Marca la casilla
+const int BOTON_RESET = 6;
+
+// ---- Control del juego ----
+int cursor = 0;                // Casilla seleccionada (0–8)
+int tablero[9];                // 0 vacío | 1 usuario | 2 CPU
+int turno = 0;                 // 0 usuario | 1 CPU
+int ganador = 0;               // 0 nadie | 1 user | 2 cpu | 3 empate
+
+// Tiempo para debounce
+unsigned long lastPressMove = 0;
+unsigned long lastPressSel  = 0;
+
+// ============================================================================
+//                           FUNCIONES DE IMPRESIÓN
+// ============================================================================
+void imprimirTablero() {
+  Serial.println("\n============== TABLERO ==============\n");
+
+  for (int i = 0; i < 9; i++) {
+
+    // Cursor resaltado
+    if (i == cursor) Serial.print("[");
+
+    // Contenido
+    if (tablero[i] == 0) Serial.print("-");
+    if (tablero[i] == 1) Serial.print("X");
+    if (tablero[i] == 2) Serial.print("O");
+
+    if (i == cursor) Serial.print("] ");
+    else Serial.print("  ");
+
+    // Saltos de línea
+    if (i % 3 == 2) Serial.println();
+  }
+  Serial.println("\n=====================================\n");
+}
+
+// ============================================================================
+//                            RESETEAR JUEGO
+// ============================================================================
+void resetJuego() {
+  for (int i = 0; i < 9; i++) tablero[i] = 0;
+  cursor = 0;
+  turno = 0;
+  ganador = 0;
+
+  Serial.println("\n=== NUEVA PARTIDA ===");
+  imprimirTablero();
+}
+
+// ============================================================================
+//                           VERIFICAR GANADOR
+// ============================================================================
+void revisarGanador() {
+  int c[8][3] = {
+    {0,1,2}, {3,4,5}, {6,7,8},    // Filas
+    {0,3,6}, {1,4,7}, {2,5,8},    // Columnas
+    {0,4,8}, {2,4,6}              // Diagonales
+  };
+
+  for (int i = 0; i < 8; i++) {
+    int a = c[i][0], b = c[i][1], d = c[i][2];
+    if (tablero[a] != 0 && tablero[a] == tablero[b] && tablero[b] == tablero[d]) {
+      ganador = tablero[a];
+      return;
+    }
+  }
+
+  // Empate
+  bool lleno = true;
+  for (int i = 0; i < 9; i++)
+    if (tablero[i] == 0) lleno = false;
+  
+  if (lleno) ganador = 3;
+}
+
+// ============================================================================
+//                                  BOT (CPU)
+// ============================================================================
+void cpuJugada() {
+  Serial.println("Turno de la CPU…");
+
+  int pos;
+  do {
+    pos = random(0, 9);
+  } while (tablero[pos] != 0);
+
+  tablero[pos] = 2;
+
+  Serial.print("CPU marcó en posición: ");
+  Serial.println(pos);
+
+  revisarGanador();
+  imprimirTablero();
+}
+
+// ============================================================================
+//                                  SETUP
+// ============================================================================
+void setup() {
+  Serial.begin(115200);
+  pinMode(BOTON_MOVER, INPUT_PULLUP);
+  pinMode(BOTON_SELEC, INPUT_PULLUP);
+   pinMode(BOTON_RESET, INPUT_PULLUP);
+
+
+  randomSeed(analogRead(0));
+  resetJuego();
+}
+
+// ============================================================================
+//                              LOOP PRINCIPAL
+// ============================================================================
+void loop() {
+  if (digitalRead(BOTON_RESET) == LOW) {
+    delay(200);      // debounce
+    resetJuego();    // reiniciar sin importar estado
+    return;
+  }
+  // ---------------- BOTÓN 1: MOVER CURSOR ----------------
+  if (digitalRead(BOTON_MOVER) == LOW && millis() - lastPressMove > 250) {
+    lastPressMove = millis();
+    cursor = (cursor + 1) % 9;
+    imprimirTablero();
+  }
+
+  // ---------------- BOTÓN 2: SELECCIONAR ----------------
+  if (digitalRead(BOTON_SELEC) == LOW && millis() - lastPressSel > 250) {
+    lastPressSel = millis();
+
+    if (turno == 0 && tablero[cursor] == 0) {
+      tablero[cursor] = 1;  // Jugador marca X
+      revisarGanador();
+      imprimirTablero();
+
+      if (ganador == 0) turno = 1;
+    }
+  }
+
+  // ------------------- TURNO CPU -------------------
+  if (turno == 1 && ganador == 0) {
+    delay(800);
+    cpuJugada();
+    if (ganador == 0) turno = 0;
+  }
+
+  // ------------------- GANADOR ---------------------
+  if (ganador != 0) {
+    if (ganador == 1){Serial.println(" ¡GANASTE!"); delay(3000);} 
+    if (ganador == 2) {Serial.println(" Ganó la CPU.");delay(3000);}
+    if (ganador == 3) {Serial.println(" Empate.");delay(3000);}
+
+    Serial.println("\nPresiona SELECCIONAR para reiniciar.");
+
+    // Espera reinicio
+    while (1) {
+      if (digitalRead(BOTON_SELEC) == LOW) {
+        delay(300);
+        resetJuego();
+        return;
+      }
+    }
+  }
+}
